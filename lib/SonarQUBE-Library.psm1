@@ -13,85 +13,57 @@ function Request-SonarQUBE {
 }
 
 function Get-SonarQUBE {
+    Param(
+        [Parameter(Mandatory = $true, Position = 0)]$Component
+    )
+    
+    $IconError = $Global:Config.SonarQUBE.icon_error
+    
+    Try {
+        $response =  Request-SonarQUBE  $Component
+    }
+    Catch {
+        $ExceptionMessage = $_.Exception.Message
+        throw " ${IconError} *_${Component}_* - ``${ExceptionMessage}`` `n"
+    }
 
-    $ResponseArray = $()
-    $Send = $false
+    if ($response.StatusCode -eq 200) {
+        $response = $response.Content | ConvertFrom-Json
+        
+        if ($response.errors) {
+            $ErrorMessage = $response.errors[0].msg
+            throw " ${IconError} *_${Component}_* - ``${ErrorMessage}`` `n"
+        }
 
-    ForEach ($component in $Global:Config.SonarQUBE.projects) {
-           
         Try {
-            $response =  Request-SonarQUBE  $component
+            $response =  Request-SonarQUBE  $component -PageIndex  $response.paging.total
         }
         Catch {
-
-            Write-Error "An exception was caught: $($_.Exception.Message)"
-            
-            $err = $_.Exception.Message
-
-            $icon = $Global:Config.SonarQUBE.icon_error
-
-            $ResponseArray += " ${icon} *_${component}_* - ``${err}`` `n"
-            
-            $Send = $true
-            continue
+            $ExceptionMessage = $_.Exception.Message
+            throw " ${IconError} *_${Component}_* - ``${ExceptionMessage}`` `n"
         }
-
+        
         if ($response.StatusCode -eq 200) {
             $response = $response.Content | ConvertFrom-Json
-
+            
             if ($response.errors) {
-                $icon = $Global:Config.SonarQUBE.icon_error
-                $msg = $response.errors[0].msg 
-                $ResponseArray += " ${icon} *_${component}_* - ``${msg}`` `n"
+                $ErrorMessage = $response.errors[0].msg
+                throw " ${IconError} *_${Component}_* - ``${ErrorMessage}`` `n"
             }
-            else {
-                Try {
-                    $response =  Request-SonarQUBE  $component -PageIndex  $response.paging.total
-                }
-                Catch {
-        
-                    Write-Error "An exception was caught: $($_.Exception.Message)"
-                    
-                    $err = $_.Exception.Message
-        
-                    $icon = $Global:Config.SonarQUBE.icon_error
-        
-                    $ResponseArray += " ${icon} *_${component}_* - ``${err}`` `n"
-                    
-                    $Send = $true
-                    continue
-                }
-                if ($response.StatusCode -eq 200) {
-                    $response = $response.Content | ConvertFrom-Json
-        
-                    if ($response.errors) {
-                        $icon = $Global:Config.SonarQUBE.icon_error
-                        $msg = $response.errors[0].msg 
-                        $ResponseArray += " ${icon} *_${component}_* - ``${msg}`` `n"
+
+            $Coverage = $response.measures[0].history[0].value 
+            ForEach ( $Threshold in $Global:Config.SonarQUBE.threshold) {
+                if ( [double]$Coverage -ge $Threshold.value ) {
+                    if ($Threshold.alert -eq $false) {
+                        throw "ThresholdAlertException"
+                    } else {
+                        $IconSuccess=$Threshold.icon
+                        return " ${IconSuccess} *_${Component}_* - ``${Coverage}%`` `n"
                     }
-                    else {
-                        $Coverage = $response.measures[0].history[0].value 
-                        ForEach ( $Threshold in $Global:Config.SonarQUBE.threshold) {
-                            if ( [double]$Coverage -ge $Threshold.value ) {
-                                $icon = $Threshold.icon
-                                $ResponseArray += " ${icon} *_${component}_* - ``${Coverage}%`` `n"
-                                if ($Threshold.alert -eq $true) {
-                                    $Send = $true
-                                }
-                                break
-                            }
-                        } 
-                    }
+                    break
                 }
-            }
+            } 
         }
-    }
 
-    if ($Send -eq $false) {
-        $ResponseArray = $()
-    }
-
-    if ($ResponseArray.Count -gt 0) {
-        return $ResponseArray
     }
 }
