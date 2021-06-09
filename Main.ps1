@@ -11,10 +11,14 @@ catch {
 }
 
 $Str = ""
+$CountComponents = 0
+
+Reset-Coverage
 # Get info from all modules
 ForEach ($component in $Global:Config.SonarQUBE.projects) {
 	try {
 		$Str += Get-SonarQUBE $component
+		$CountComponents += 1
 	} catch {
 		if( $_.Exception.Message -ne "ThresholdAlertException" ) {
 			$Str +=  $_.Exception.Message
@@ -23,4 +27,10 @@ ForEach ($component in $Global:Config.SonarQUBE.projects) {
 }
 
 # sent message to slack
-Send-SlackMessage $Str -Url $global:Config.Slack.url  -Channel $global:Config.Slack.channel  -Emoji $global:Config.Slack.icon_emoji  -IconUrl $global:Config.Slack.icon_url -Username $global:Config.Slack.username;
+Send-SlackMessage $Str `
+	-Url $global:Config.Slack.url  `
+	-Channel $global:Config.Slack.channel  `
+	-Emoji $global:Config.Slack.icon_emoji  `
+	-IconUrl $global:Config.Slack.icon_url `
+	-Username $global:Config.Slack.username `
+	-GeneralAverage ($Coverage/$CountComponents)

@@ -39,16 +39,19 @@ To windows environment run native or in docker engine too.
             {
                 "value": 80.0,
                 "icon": ":sorriso_olhos_sorrindo:",
+                "color": "good",
                 "alert": false
             },
             {
                 "value": 50.0,
                 "icon": ":pensativo:",
+                "color": "warning",
                 "alert": true
             },
             {
                 "value": 0.0,
                 "icon": ":bravo:",
+                "color": "danger",
                 "alert": true
             }
         ],

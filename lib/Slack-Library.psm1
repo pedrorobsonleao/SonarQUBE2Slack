@@ -1,3 +1,19 @@
+function Get-Color {
+    param([Parameter(Mandatory = $true, Position = 0)] $Average)
+
+    $Color = "good"
+    
+    ForEach ( $Threshold in $Global:Config.SonarQUBE.threshold) {
+        if ( $Average -ge $Threshold.value ) {
+            if ($Threshold.alert -eq $true) {
+                return $Threshold.color
+            }
+            break
+        }
+    } 
+
+    return $Color
+}
 function Send-SlackMessage {
     # Add the "Incoming WebHooks" integration to get started: https://slack.com/apps/A0F7XDUAZ-incoming-webhooks
     param (
@@ -7,10 +23,25 @@ function Send-SlackMessage {
         $Username, # Username to send from.
         $Channel, # Channel to post message. Can be in the format "@username" or "#channel"
         $Emoji, # Example: ":bangbang:".
-        $IconUrl # Url for an icon to use.
+        $IconUrl, # Url for an icon to use.
+        $GeneralAverage #General Threshold 
     )
     
-    $body = @{ text = $Text; channel = $Channel; username = $Username; icon_emoji = $Emoji; icon_url = $IconUrl } | ConvertTo-Json 
+    $Color =  Get-Color -Average $GeneralAverage
+
+    $body = @{ 
+        channel = $Channel; 
+        username = $Username.split("-")[0]; 
+        icon_emoji = $Emoji; 
+        icon_url = $IconUrl; 
+        color = $Color;
+        fields = @(
+            @{
+                title = ":: " + $Username.split("-")[1] + " SonarQUBE Metrics";
+                value = $Text;
+                short = $false;
+            }
+        ) } | ConvertTo-Json 
 
     #$body = [System.Web.HttpUtility]::UrlEncode($body)
 
