@@ -8,11 +8,20 @@ function Request-SonarQUBE {
     )
 
     $Url = $Global:Config.SonarQUBE.url
-    $Url += "?component=${Component}&metrics=${Metrics}&pageIndex=${PageIndex}&pageSize=${PageSize}" 
-    
-    
+    $Token = $Global:Config.SonarQUBE.token
+    $Headers = @{
+        Authorization="Bearer $Token"
+    }
 
-    return Invoke-WebRequest -UseBasicParsing -Method Get -ContentType "application/json;charset=UTF-8" -Uri $Url
+    $Url += "?component=${Component}&metrics=${Metrics}&pageIndex=${PageIndex}&pageSize=${PageSize}" 
+
+    If ($Token) {
+        $Response = Invoke-WebRequest -UseBasicParsing -Method Get -ContentType "application/json;charset=UTF-8" -Uri $Url -Headers $Headers
+    } Else {
+        $Response = Invoke-WebRequest -UseBasicParsing -Method Get -ContentType "application/json;charset=UTF-8" -Uri $Url
+    }
+    
+    return $Response  
 }
 
 function Reset-Coverage {
